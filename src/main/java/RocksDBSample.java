@@ -14,25 +14,46 @@ class RocksDBSample {
         RocksDB.loadLibrary();
     }
 
-    RocksDB rocksDB;
+    public void readFromDB() throws RocksDBException {
+       RocksDB rocksDB;
+       DBOptions dbOptions = new DBOptions();
+       final List<ColumnFamilyDescriptor> cfDescs = new ArrayList<>();
+       String path = dbPath + "/" + OptionsUtil.getLatestOptionsFileName(dbPath, Env.getDefault());
+       OptionsUtil.loadOptionsFromFile(path,Env.getDefault(),dbOptions,cfDescs,false);
 
-    public void testDefaultColumnFamily() throws RocksDBException, IOException{
-        Options options = new Options();
-        options.setCreateIfMissing(true);
+       final List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>();
+       rocksDB = RocksDB.open(dbOptions,dbPath,cfDescs,columnFamilyHandles);
 
-        if(!Files.isSymbolicLink(Paths.get(dbPath)))
-            Files.createDirectories(Paths.get(dbPath));
-        rocksDB = RocksDB.open(options,dbPath);
-
-        RocksIterator iterator = rocksDB.newIterator();
-        for (iterator.seekToFirst();iterator.isValid(); iterator.next() ){
-         System.out.println("iterator key: "+ new String(iterator.key()) + ", iterator value: " + new String(iterator.value()));
+        RocksIterator iter = rocksDB.newIterator();
+        for (iter.seekToFirst(); iter.isValid(); iter.next()) {
+            System.out.println("iter key:" + new String(iter.key()) + ", iter value:" + new String(iter.value()));
         }
 
     }
 
+    public void getNewDB() throws RocksDBException,IOException {
+        RocksDB rocksDB;
+        Options options = new Options();
+        options.setCreateIfMissing(true);
+
+        if (!Files.isSymbolicLink(Paths.get(dbPath)))
+            Files.createDirectories(Paths.get(dbPath));
+        rocksDB = RocksDB.open(options, dbPath);
+
+        byte[] key = "Hello".getBytes();
+        byte[] value = "World".getBytes();
+        rocksDB.put(key, value);
+
+        byte[] getValue = rocksDB.get(key);
+        System.out.println(new String(getValue));
+
+        rocksDB.close();
+    }
+
     public static void main(String[] args) throws Exception{
         RocksDBSample test = new RocksDBSample();
-        test.testDefaultColumnFamily();
+//        test.getNewDB();
+
+        test.readFromDB();
     }
 }
